@@ -13,6 +13,7 @@ var Click = require('./app/models/click');
 
 var app = express();
 
+
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
@@ -22,25 +23,48 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+// app.get('/', 
+// function(req, res, next) {
+//   if ( true ) { //needs to have login
+//     res.render('index');
+//   } else {
+//     next();
+//   }
+// }, function(req, res, next) {
+//   res.redirect(301, '/login');
+// });
 
-app.get('/', 
+
+var checkLogin = function(req, res, next) {
+  if (true) {
+    res.redirect(301, '/login');
+  } else {
+    next();
+  }
+}; 
+
+app.get('/', checkLogin,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/login', function(req, res) {
+  res.render('login');
+});
+
+app.get('/create', checkLogin,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links', checkLogin,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
 
