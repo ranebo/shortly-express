@@ -24,7 +24,7 @@ app.use(partials());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser())
+app.use(cookieParser());
 app.use(express.static(__dirname + '/public'));
 
 var checkUser = function(req, res, next) {
@@ -62,7 +62,7 @@ function(req, res) {
   });
 });
 
-app.post('/links', checkUser,
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
 
@@ -87,7 +87,7 @@ function(req, res) {
           baseUrl: req.headers.origin
         })
         .then(function(newLink) {
-          res.send(200, newLink);
+          res.send(200, newLink.attributes);
         });
       });
     }
@@ -108,7 +108,7 @@ function(req, res) {
         password: password
       })
       .then(function() {
-        res.redirect('/login');
+        res.redirect('/');
       });
     }
   });
@@ -139,9 +139,16 @@ function(req, res) {
         }
       });
     } else {
-      res.send(404, 'WHOOOOO are you who who who who? I realy wanna know!');
+      res.redirect('/login');
+      //res.send(404); //, 'WHOOOOO are you who who who who? I realy wanna know!');
     }
   });
+});
+
+app.get('/logout',
+function(req, res) {
+  res.cookie('token', 'goodbye');
+  res.redirect('/login');
 });
 
 /************************************************************/
