@@ -4,6 +4,7 @@ var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var bcrypt = require('bcrypt-nodejs');
 var jwt = require('jsonwebtoken');
+var cookieParser = require('cookie-parser');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -23,15 +24,18 @@ app.use(partials());
 app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(cookieParser())
 app.use(express.static(__dirname + '/public'));
 
 var checkUser = function(req, res, next) {
-  if (true) {
-    res.redirect(301, '/login');
-  } else {
-    next();
-  }
-}; 
+  jwt.verify(req.cookies.token, app.get('superSecret'), function(err, body) {
+    if (err) {
+      res.redirect(301, '/login');
+    } else {
+      next();
+    }
+  });
+};
 
 app.get('/', checkUser,
 function(req, res) {
@@ -58,7 +62,7 @@ function(req, res) {
   });
 });
 
-app.post('/links',
+app.post('/links', checkUser,
 function(req, res) {
   var uri = req.body.url;
 
@@ -94,7 +98,7 @@ app.post('/signup',
 function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
-  
+
   new User({username: username}).fetch().then(function(user) {
     if (user) {
       res.send(404, 'User Already Exists, Silly-Billy!');
@@ -121,9 +125,14 @@ function(req, res) {
       bcrypt.compare(password, user.attributes.password, function(err, match) {
         if (err) { throw err; }
         if (match) {
-          var token = jwt.sign(user, app.get('superSecret'), {expiresIn: 3600});
+          var token = jwt.sign(user, app.get('superSecret'), {
+            expiresIn: 3600,
+            issuer: 'us',
+            subject: user.attributes.username
+          });
           console.log(token);
-         // res.json({success: true, message: 'TOKENS ARE BETTER THAN COOOOOKIES', token: token});
+          res.cookie('token', token);
+        //  res.json({success: true, message: 'TOKENS ARE BETTER THAN COOOOOKIES', token: token});
           res.redirect('/');
         } else {
           res.send(404, 'Thief! That is the not the right password!');
