@@ -2,7 +2,8 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-
+var bcrypt = require('bcrypt-nodejs');
+var jwt = require('jsonwebtoken');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -16,6 +17,7 @@ var app = express();
 
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
+app.set('superSecret', 'thisisoursecrettokenstringblancheisa');
 app.use(partials());
 // Parse JSON (uniform resource locators)
 app.use(bodyParser.json());
@@ -23,19 +25,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
-// app.get('/', 
-// function(req, res, next) {
-//   if ( true ) { //needs to have login
-//     res.render('index');
-//   } else {
-//     next();
-//   }
-// }, function(req, res, next) {
-//   res.redirect(301, '/login');
-// });
-
-
-var checkLogin = function(req, res, next) {
+var checkUser = function(req, res, next) {
   if (true) {
     res.redirect(301, '/login');
   } else {
@@ -43,7 +33,7 @@ var checkLogin = function(req, res, next) {
   }
 }; 
 
-app.get('/', checkLogin,
+app.get('/', checkUser,
 function(req, res) {
   res.render('index');
 });
@@ -52,12 +42,16 @@ app.get('/login', function(req, res) {
   res.render('login');
 });
 
-app.get('/create', checkLogin,
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
+
+app.get('/create', checkUser,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', checkLogin,
+app.get('/links', checkUser,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
@@ -96,10 +90,54 @@ function(req, res) {
   });
 });
 
+app.post('/signup',
+function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+  
+  new User({username: username}).fetch().then(function(user) {
+    if (user) {
+      res.send(404, 'User Already Exists, Silly-Billy!');
+    } else {
+      Users.create({
+        username: username,
+        password: password
+      })
+      .then(function() {
+        res.redirect('/login');
+      });
+    }
+  });
+});
+
+app.post('/login',
+function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  new User({username: username}).fetch().then(function(user) {
+    if (user) {
+      // check if password mathces returned pasword via found.attributes.password
+      bcrypt.compare(password, user.attributes.password, function(err, match) {
+        if (err) { throw err; }
+        if (match) {
+          var token = jwt.sign(user, app.get('superSecret'), {expiresIn: 3600});
+          console.log(token);
+         // res.json({success: true, message: 'TOKENS ARE BETTER THAN COOOOOKIES', token: token});
+          res.redirect('/');
+        } else {
+          res.send(404, 'Thief! That is the not the right password!');
+        }
+      });
+    } else {
+      res.send(404, 'WHOOOOO are you who who who who? I realy wanna know!');
+    }
+  });
+});
+
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
-
 
 
 /************************************************************/
